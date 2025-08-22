@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Number</title>
+    <!-- Use Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* A dark background color */
+        }
+        /* Hide the number input spinner buttons */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="flex flex-col lg:flex-row gap-8 w-full max-w-4xl">
+        <!-- Main Game Panel -->
+        <div class="bg-gray-800 text-white p-8 rounded-xl shadow-lg w-full lg:w-1/2 border-2 border-gray-700 flex-shrink-0">
+            <!-- Game Title and Instructions -->
+            <h1 class="text-4xl font-bold text-center mb-4 text-emerald-400">Guessing Game</h1>
+            <p class="text-lg text-center mb-6 text-gray-400">I'm thinking of a number between 1 and 50.</p>
+
+            <!-- Game Interface -->
+            <div id="game-container" class="space-y-4">
+                <!-- Message display area -->
+                <p id="message" class="text-xl text-center font-semibold text-gray-300 min-h-[2rem]"></p>
+                
+                <!-- Guess input and buttons -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <input 
+                        type="number" 
+                        id="guess-input" 
+                        class="w-auto p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors text-center max-w-[6ch]"
+                    >
+                    <button 
+                        id="guess-button" 
+                        class="w-full sm:w-auto p-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Submit Guess
+                    </button>
+                </div>
+                
+                <!-- New buttons for incrementing the guess -->
+                <div class="flex justify-center gap-4 mt-2">
+                    <button id="add-1-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">+1</button>
+                    <button id="add-5-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">+5</button>
+                    <button id="add-10-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">+10</button>
+                </div>
+
+                <!-- Remaining guesses display -->
+                <div class="text-center text-sm text-gray-500 mt-2">
+                    <span id="guesses-remaining"></span>
+                </div>
+
+                <!-- New Game button -->
+                <div class="flex justify-center mt-6">
+                    <button 
+                        id="new-game-button" 
+                        class="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200"
+                    >
+                        New Game
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Past Attempts Log Panel -->
+        <div class="bg-gray-800 text-white p-8 rounded-xl shadow-lg w-full lg:w-1/2 border-2 border-gray-700 flex-shrink-0">
+            <h2 class="text-2xl font-bold text-center mb-4 text-emerald-400">Past Attempts</h2>
+            <div id="attempts-log" class="space-y-2 text-sm max-h-80 overflow-y-auto">
+                <!-- Log entries will be added here by JavaScript -->
+                <p class="text-gray-400 text-center">Your guesses will appear here.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Logic Variables ---
+        let secretNumber;
+        let guessesLeft;
+        const maxGuesses = 5;
+        const MIN_NUMBER = 1;
+        const MAX_NUMBER = 50;
+        let pastAttempts = [];
+
+        // --- DOM Elements ---
+        const messageDisplay = document.getElementById('message');
+        const guessInput = document.getElementById('guess-input');
+        const guessButton = document.getElementById('guess-button');
+        const newGameButton = document.getElementById('new-game-button');
+        const guessesRemainingDisplay = document.getElementById('guesses-remaining');
+        const add1Button = document.getElementById('add-1-btn');
+        const add5Button = document.getElementById('add-5-btn');
+        const add10Button = document.getElementById('add-10-btn');
+        const attemptsLog = document.getElementById('attempts-log');
+
+
+        /**
+         * Initializes or resets the game state.
+         * This function is called when the page loads and when the 'New Game' button is clicked.
+         */
+        function startGame() {
+            // Generate a new random number between 1 and 50
+            secretNumber = Math.floor(Math.random() * (MAX_NUMBER - MIN_NUMBER + 1)) + MIN_NUMBER;
+            guessesLeft = maxGuesses;
+            pastAttempts = [];
+            
+            // Reset the user interface
+            messageDisplay.textContent = "Guess my secret number.";
+            guessInput.value = '';
+            guessInput.disabled = false;
+            guessButton.disabled = false;
+            add1Button.disabled = false;
+            add5Button.disabled = false;
+            add10Button.disabled = false;
+            updateGuessesDisplay();
+            updateAttemptsLog();
+        }
+
+        /**
+         * Updates the display to show the number of guesses remaining.
+         */
+        function updateGuessesDisplay() {
+            guessesRemainingDisplay.textContent = `Guesses remaining: ${guessesLeft}`;
+        }
+        
+        /**
+         * Updates the attempts log display based on the pastAttempts array.
+         */
+        function updateAttemptsLog() {
+            attemptsLog.innerHTML = ''; // Clear previous log
+            if (pastAttempts.length === 0) {
+                attemptsLog.innerHTML = '<p class="text-gray-400 text-center">Your guesses will appear here.</p>';
+                return;
+            }
+
+            pastAttempts.forEach(attempt => {
+                const logEntry = document.createElement('p');
+                logEntry.textContent = `You guessed ${attempt.guess}: ${attempt.feedback}`;
+                logEntry.classList.add('p-2', 'bg-gray-700', 'rounded-lg');
+                attemptsLog.appendChild(logEntry);
+            });
+            // Auto-scroll to the bottom
+            attemptsLog.scrollTop = attemptsLog.scrollHeight;
+        }
+
+        /**
+         * Checks the user's guess against the secret number.
+         * This is the main game loop logic.
+         */
+        function checkGuess() {
+            const userGuess = parseInt(guessInput.value, 10);
+            
+            // Basic input validation
+            if (isNaN(userGuess) || userGuess < MIN_NUMBER || userGuess > MAX_NUMBER) {
+                messageDisplay.textContent = `Please enter a valid number between ${MIN_NUMBER} and ${MAX_NUMBER}!`;
+                return;
+            }
+
+            // Decrement the guesses left
+            guessesLeft--;
+            updateGuessesDisplay();
+            
+            let feedback = '';
+
+            // Check if the user guessed correctly
+            if (userGuess === secretNumber) {
+                feedback = `Great job! ${userGuess} is correct! You won!`;
+                endGame();
+            } else {
+                // Check for close proximity hints, from most specific to least specific
+                const difference = Math.abs(userGuess - secretNumber);
+
+                if (difference === 1) {
+                    feedback = "You are insanely close now!";
+                } else if (difference <= 5) {
+                    feedback = "You are just off by 5 or less, so pretty close!";
+                } else if (difference <= 10) {
+                    feedback = "You are really close now! About ±10 off.";
+                } else if (userGuess > secretNumber) {
+                    feedback = "Guess a lot lower.";
+                } else { // userGuess < secretNumber
+                    feedback = "Guess a lot higher.";
+                }
+
+                // Check if the game is over due to no guesses left
+                if (guessesLeft === 0) {
+                    feedback = `Sorry, GAME OVER! The correct number was ${secretNumber}.`;
+                    endGame();
+                }
+            }
+            
+            // Add the current attempt to the log and update the display
+            pastAttempts.push({ guess: userGuess, feedback: feedback });
+            updateAttemptsLog();
+            messageDisplay.textContent = feedback;
+            
+            // Clear the input field after each attempt
+            guessInput.value = '';
+        }
+        
+        /**
+         * Disables the input and guess button when the game ends.
+         */
+        function endGame() {
+            guessInput.disabled = true;
+            guessButton.disabled = true;
+            add1Button.disabled = true;
+            add5Button.disabled = true;
+            add10Button.disabled = true;
+        }
+
+        /**
+         * Increments the current guess input field by a given value.
+         * @param {number} value The amount to add to the input field.
+         */
+        function incrementGuess(value) {
+            let currentGuess = parseInt(guessInput.value, 10) || 0;
+            let newGuess = currentGuess + value;
+            if (newGuess > MAX_NUMBER) {
+                newGuess = MAX_NUMBER;
+            }
+            guessInput.value = newGuess;
+        }
+
+        // --- Event Listeners ---
+        guessButton.addEventListener('click', checkGuess);
+        newGameButton.addEventListener('click', startGame);
+        add1Button.addEventListener('click', () => incrementGuess(1));
+        add5Button.addEventListener('click', () => incrementGuess(5));
+        add10Button.addEventListener('click', () => incrementGuess(10));
+        
+        // Allow user to press Enter to submit guess
+        guessInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                checkGuess();
+            }
+        });
+
+        // Start the game when the page loads
+        window.onload = startGame;
+    </script>
+</body>
+</html>
